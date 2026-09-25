@@ -38,38 +38,38 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding)
                     )
 
+                    // Set attributes for audio file
+                    val audioAttributes = AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+
+                    // Create sound pool
+                    val soundPool = SoundPool.Builder()
+                        .setMaxStreams(1)
+                        .setAudioAttributes(audioAttributes)
+                        .build()
+
                     val context = LocalContext.current
                     var playAlarm by remember { mutableStateOf(false) }
 
                     // Manage SoundPool state inside DisposableEffect
                     DisposableEffect(playAlarm) {
-                        // 1. Configure audio attributes for an alarm sound
-                        val audioAttributes = AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_ALARM)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build()
-
-                        // 2. Build the SoundPool instance
-                        val soundPool = SoundPool.Builder()
-                            .setMaxStreams(1)
-                            .setAudioAttributes(audioAttributes)
-                            .build()
-
-                        // 3. Load the sound file into memory
+                        // Load sound file into memory
                         val soundId = soundPool.load(context, R.raw.smokealarm, 1)
                         var streamId = 0
 
                         if (playAlarm) {
-                            // Wait for the audio to finish loading into memory before playing
+                            // Wait for audio to finish loading into memory before playing
                             soundPool.setOnLoadCompleteListener { pool, _, status ->
-                                if (status == 0) { // 0 means success
+                                if (status == 0) {
                                     // loop = -1 tells SoundPool to loop indefinitely with zero gap
                                     streamId = pool.play(soundId, 1f, 1f, 1, -1, 1f)
                                 }
                             }
                         }
 
-                        // 4. Stop instantly when playAlarm becomes false or user exits app
+                        // Stop instantly when playAlarm becomes false or user exits app
                         onDispose {
                             if (streamId != 0) {
                                 soundPool.stop(streamId)
@@ -88,12 +88,10 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (playAlarm) {
-                        AlarmImage("")
+                        Show2dsImage()
                     }
                 }
             }
-
-
         }
     }
 }
@@ -107,40 +105,10 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun AlarmImage(none: String, modifier: Modifier = Modifier) {
+fun Show2dsImage(modifier: Modifier = Modifier) {
     val image = painterResource(R.drawable._2ds)
     Image(
         painter = image,
         contentDescription = "2DS"
-    )
-}
-
-@Composable
-fun CenteredToggle() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        PlayAlarmSoundToggle()
-    }
-}
-
-@Composable
-fun PlayAlarmSoundToggle() {
-    // Maintain the checked state
-    var isChecked by remember { mutableStateOf(false) }
-
-    // Render toggle
-    Switch(
-        checked = isChecked,
-        onCheckedChange = { newState ->
-            isChecked = newState
-
-            if (isChecked) {
-                // Done when turned ON
-            } else {
-                // Done when turned OFF
-            }
-        }
     )
 }
