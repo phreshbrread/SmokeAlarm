@@ -24,7 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.media.SoundPool
+import android.media.audiofx.LoudnessEnhancer
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.graphics.Color
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,63 +37,84 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SmokeAlarmTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Ballsack",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                // Content
+                Scaffold { innerPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+                        // Set attributes for audio file
+                        val audioAttributes = AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
 
-                    // Set attributes for audio file
-                    val audioAttributes = AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
+                        // Create sound pool
+                        val soundPool = SoundPool.Builder()
+                            .setMaxStreams(1)
+                            .setAudioAttributes(audioAttributes)
+                            .build()
 
-                    // Create sound pool
-                    val soundPool = SoundPool.Builder()
-                        .setMaxStreams(1)
-                        .setAudioAttributes(audioAttributes)
-                        .build()
+                        val context = LocalContext.current
+                        var playAlarm by remember { mutableStateOf(false) }
 
-                    val context = LocalContext.current
-                    var playAlarm by remember { mutableStateOf(false) }
+                        // Greetings text
+                        Greeting( name = "Ballsack" )
 
-                    // Manage SoundPool state inside DisposableEffect
-                    DisposableEffect(playAlarm) {
-                        // Load sound file into memory
-                        val soundId = soundPool.load(context, R.raw.smokealarm, 1)
-                        var streamId = 0
+                        // Manage SoundPool state inside DisposableEffect
+                        DisposableEffect(playAlarm) {
+                            // Load sound file into memory
+                            val soundId = soundPool.load(context, R.raw.smokealarm, 1)
+                            var streamId = 0
 
-                        if (playAlarm) {
-                            // Wait for audio to finish loading into memory before playing
-                            soundPool.setOnLoadCompleteListener { pool, _, status ->
-                                if (status == 0) {
-                                    // loop = -1 tells SoundPool to loop indefinitely with zero gap
-                                    streamId = pool.play(soundId, 1f, 1f, 1, -1, 1f)
+                            if (playAlarm) {
+                                // Wait for audio to finish loading into memory before playing
+                                soundPool.setOnLoadCompleteListener { pool, _, status ->
+                                    if (status == 0) {
+                                        // loop = -1 tells SoundPool to loop indefinitely with zero gap
+                                        streamId = pool.play(soundId, 1f, 1f, 1, -1, 1f)
+                                    }
                                 }
                             }
-                        }
 
-                        // Stop instantly when playAlarm becomes false or user exits app
-                        onDispose {
-                            if (streamId != 0) {
-                                soundPool.stop(streamId)
+                            // Stop instantly when playAlarm becomes false or user exits app
+                            onDispose {
+                                if (streamId != 0) {
+                                    soundPool.stop(streamId)
+                                }
+                                soundPool.release()
                             }
-                            soundPool.release()
                         }
-                    }
 
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Button(onClick = { playAlarm = !playAlarm }) {
-                            Text(if (!playAlarm) "Start alarm" else "Stop alarm")
+                        // Alarm toggle button
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Button(onClick = { playAlarm = !playAlarm }) {
+                                Text(if (!playAlarm) "Start alarm" else "Stop alarm")
+                            }
                         }
-                    }
 
-                    if (playAlarm) {
-                        Show2dsImage()
+                        // Chirp toggle button
+                        var isChirping by remember { mutableStateOf(false) }
+                        val chirp = MediaPlayer.create(context, R.raw.chirp_long)
+                        chirp.isLooping = true
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            Button(onClick = {
+                                isChirping = !isChirping
+                                if (isChirping) chirp.start() else chirp.stop()
+                            }) {
+                                Text(if (!isChirping) "Start chirp" else "Stop chirp")
+                            }
+                        }
+
+                        // Show image when alarm is playing
+                        if (playAlarm) Show2dsImage()
                     }
                 }
             }
